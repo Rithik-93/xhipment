@@ -1,41 +1,25 @@
-FROM node:20-alpine AS base
+FROM node:20-alpine
+ARG DATABASE_URL
+ARG REDIS_URI
 
-FROM base AS builder
-WORKDIR /app
+RUN set -ex; \
+    apk update; \
+    apk add --no-cache \
+    openssl
 
-RUN apk add --no-cache openssl
-
-RUN npm i -g pnpm
-
-COPY package.json pnpm-lock.yaml ./
-COPY packages/database/package.json ./packages/database/
-COPY apps/worker/package.json ./apps/worker/
-
-RUN pnpm install
+WORKDIR /usr/src/app
 
 COPY . .
 
-RUN cd packages/database && pnpm install && npx prisma generate && cd ../..
+RUN npm i pnpm -g
+RUN pnpm install
 
-RUN cd apps/worker && pnpm install && pnpm build && cd ../..
+RUN cd packages/database && DATABASE_URL=$DATABASE_URL npx prisma generate && cd ../..
 
-FROM base AS production
-WORKDIR /app
+RUN echo DATABASE_URL=$DATABASE_URL >> apps/worker/.env
+RUN DATABASE_URL=$DATABASE_URL && REDIS_URI=$REDIS_URI cd apps/worker && pnpm build && cd ../..
 
-RUN apk add --no-cache openssl
-
-RUN npm i -g pnpm
-
-COPY package.json pnpm-lock.yaml ./
-COPY packages/database/package.json ./packages/database/
-COPY apps/worker/package.json ./apps/worker/
-
-RUN pnpm install --prod
-
-COPY --from=builder /app/packages/database/node_modules/ ./packages/database/node_modules/
-COPY --from=builder /app/apps/worker/dist ./apps/worker/dist
-
-ENV DATABASE_URL=""
+RUN rm apps/worker/.env
 
 EXPOSE 3001
 
