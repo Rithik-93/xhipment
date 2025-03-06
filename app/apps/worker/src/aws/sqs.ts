@@ -1,9 +1,18 @@
-import { ReceiveMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
+import {
+  ReceiveMessageCommand,
+  SQSClient,
+  DeleteMessageCommand,
+} from "@aws-sdk/client-sqs";
 import { logger } from "../utils/logger";
 import { config } from "dotenv";
 import redis from "../redis/redisClient";
 import { orderSchema } from "../schema";
-import { accessKeyId, queueUrl as QueueUrl, region, secretAccessKey } from "../config/config";
+import {
+  accessKeyId,
+  queueUrl as QueueUrl,
+  region,
+  secretAccessKey,
+} from "../config/config";
 
 config();
 
@@ -16,7 +25,6 @@ const sqsClient = new SQSClient({
 });
 
 const queueUrl = QueueUrl;
-
 
 export const popQueue = async (): Promise<void> => {
   const command = new ReceiveMessageCommand({
@@ -47,13 +55,10 @@ export const popQueue = async (): Promise<void> => {
             continue;
           }
 
-
-
           //WE DO ALL THE BUSINESS LOGIC HERE
 
 
-
-
+          
           const redisPayload = await redis.get(queueData.orderId);
           if (redisPayload) {
             const order = JSON.parse(redisPayload);
@@ -65,7 +70,15 @@ export const popQueue = async (): Promise<void> => {
               "EX",
               300
             );
+
             logger.info(`Order ${queueData.orderId} processed and updated.`);
+
+            await sqsClient.send(
+              new DeleteMessageCommand({
+                QueueUrl: queueUrl,
+                ReceiptHandle: message.ReceiptHandle,
+              })
+            );
           }
         }
       }
