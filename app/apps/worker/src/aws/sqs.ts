@@ -80,9 +80,6 @@ export const popQueue = async (): Promise<void> => {
 
             // BUSINESS LOGIC HERE
 
-
-            
-
             try {
               const redisPayload = await redis.get(queueData.orderId);
               if (redisPayload) {
@@ -151,6 +148,14 @@ export const popQueue = async (): Promise<void> => {
                       "EX",
                       300
                     );
+                    await prisma.order.update({
+                      where: {
+                        orderId: orderCache.orderId,
+                      },
+                      data: {
+                        status: "Failed",
+                      },
+                    });
                   }
                 } catch (redisError) {
                   logger.error(
