@@ -80,6 +80,12 @@ pnpm install
 pnpm db:setup
 ```
 
+Build the services:
+
+```bash
+pnpm app:setup
+```
+
 7. Start the services:
 
 ```bash
