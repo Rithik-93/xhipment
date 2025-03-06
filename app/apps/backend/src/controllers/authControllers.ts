@@ -10,7 +10,7 @@ import {
   sendAuthTokens,
   setRefreshTokenCookie,
 } from "../utils/utils";
-import { JWT_SECRET } from "../config/config";
+import { JWT_SECRET_REFRESH_TOKEN } from "../config/config";
 
 const register = async (req: Request, res: Response) => {
   try {
@@ -81,13 +81,21 @@ const login = async (req: Request, res: Response) => {
       return;
     }
 
-    const { accessToken } = sendAuthTokens(res, user.id);
+    const { accessToken, refreshToken } = sendAuthTokens(res, user.id);
+
+    await prisma.user.update({
+      where: {
+        email: user.email,
+      },
+      data: {
+        refreshToken,
+      },
+    });
 
     res.json({
       status: "success",
       message: "Login successful",
       accessToken,
-      user,
     });
     return;
   } catch (error) {
@@ -127,7 +135,7 @@ const refreshAccessToken = async (req: Request, res: Response) => {
   try {
     const decoded = jwt.verify(
       refreshToken,
-      JWT_SECRET
+      JWT_SECRET_REFRESH_TOKEN
     ) as JwtPayload;
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
@@ -156,7 +164,7 @@ const refreshAccessToken = async (req: Request, res: Response) => {
 
     setRefreshTokenCookie(res, newRefreshToken);
 
-    res.json({ status: "success", accessToken });
+    res.status(200).json({ status: "success", accessToken });
     return;
   } catch (error) {
     if (error instanceof Error) {

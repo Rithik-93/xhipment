@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import prisma from "@repo/database/client";
 import { config } from "dotenv";
-import { JWT_SECRET } from "../config/config";
+import { JWT_SECRET_ACCESS_TOKEN, JWT_SECRET_REFRESH_TOKEN } from "../config/config";
 
 config();
 
@@ -16,11 +16,11 @@ export const generateTokens = (userId: string) => {
   if (!userId) {
     throw new Error("userId not provided");
   }
-  const accessToken = jwt.sign({ userId }, JWT_SECRET, {
+  const accessToken = jwt.sign({ userId }, JWT_SECRET_ACCESS_TOKEN, {
     expiresIn: "15m",
   });
 
-  const refreshToken = jwt.sign({ userId }, JWT_SECRET, {
+  const refreshToken = jwt.sign({ userId }, JWT_SECRET_REFRESH_TOKEN, {
     expiresIn: "7d",
   });
 
