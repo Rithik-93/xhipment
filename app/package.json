@@ -7,8 +7,13 @@
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
+    "build:backend": "cd apps/backend && pnpm build && cd ../..",
+    "build:worker": "cd apps/worker && pnpm build && cd ../..",
     "start:backend": "cd apps/backend && pnpm start",
-    "start:worker": "cd apps/worker && pnpm start"
+    "start:worker": "cd apps/worker && pnpm start",
+    "db:migrate": "cd packages/database && pnpm dlx db push && cd ../..",
+    "db:generate": "cd packages/database && npx prisma generate cd ../..",
+    "db:seed": "cd packages/database && pnpm seed && cd ../.."
   },
   "devDependencies": {
     "prettier": "^3.5.3",
