@@ -1,8 +1,11 @@
+import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 import {
-  SQSClient,
-  SendMessageCommand,
-} from "@aws-sdk/client-sqs";
-import { accessKeyId, queueName, region, secretAccessKey, queueUrl as sqsQueueUrl } from "../config/config";
+  accessKeyId,
+  queueName,
+  region,
+  secretAccessKey,
+  queueUrl as sqsQueueUrl,
+} from "../config/config";
 
 const sqsClient = new SQSClient({
   region: region,
@@ -14,17 +17,19 @@ const sqsClient = new SQSClient({
 
 const queueUrl = sqsQueueUrl;
 
-export async function pushToQueue(orderId: string, items: any) {
+export async function pushToQueue(userId: string, orderId: string, items: any, totalAmount: number) {
   const messageBody = JSON.stringify({
+    userId,
     orderId,
     items,
+    totalAmount
   });
 
   const command = new SendMessageCommand({
     QueueUrl: queueUrl,
     MessageBody: messageBody,
     MessageGroupId: queueName,
-    MessageDeduplicationId: orderId
+    MessageDeduplicationId: orderId,
   });
 
   try {

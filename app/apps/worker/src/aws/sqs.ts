@@ -13,6 +13,8 @@ import {
   region,
   secretAccessKey,
 } from "../config/config";
+import prisma from "@repo/database/client";
+import { sendEmail } from "./ses";
 
 config();
 
@@ -34,58 +36,158 @@ export const popQueue = async (): Promise<void> => {
 
   try {
     while (true) {
-      const { Messages } = await sqsClient.send(command);
+      try {
+        // Adding a small delay to prevent tight loops
+        await new Promise((resolve) => setTimeout(resolve, 100));
 
-      if (!Messages || Messages.length === 0) {
-        logger.info("No messages in queue.");
-        continue;
-      }
+        const { Messages } = await sqsClient.send(command);
 
-      for (const message of Messages) {
-        const { MessageId, Body } = message;
-        logger.info(`Message received. ID: ${MessageId}, Body: ${Body}`);
+        if (!Messages || Messages.length === 0) {
+          logger.info("No messages in queue.");
+          continue;
+        }
 
-        if (Body) {
-          let queueData;
+        for (const message of Messages) {
+          const { MessageId, Body, ReceiptHandle } = message;
+          if (!Body || !ReceiptHandle) continue;
+
+          logger.info(`Message received. ID: ${MessageId}, Body: ${Body}`);
+
           try {
-            queueData = JSON.parse(Body);
-            orderSchema.parse(queueData);
-          } catch (error) {
-            logger.error("Invalid message format. Skipping message.", error);
-            continue;
-          }
+            const queueData = JSON.parse(Body);
+            const payload = orderSchema.parse(queueData);
 
-          //WE DO ALL THE BUSINESS LOGIC HERE
+            const order = await prisma.order.create({
+              data: {
+                orderId: payload.orderId,
+                products: {
+                  connect: payload.items.items.map((x) => ({
+                    id: x.productId,
+                  })),
+                },
+                status: "Processed",
+                userId: payload.userId,
+                totalAmount: payload.totalAmount,
+              },
+              select: {
+                products: true,
+                orderId: true,
+                status: true,
+                userId: true,
+                totalAmount: true,
+              },
+            });
+
+            // BUSINESS LOGIC HERE
 
 
-          
-          const redisPayload = await redis.get(queueData.orderId);
-          if (redisPayload) {
-            const order = JSON.parse(redisPayload);
-            order.status = "Processed";
+            
 
-            await redis.set(
-              queueData.orderId,
-              JSON.stringify(order),
-              "EX",
-              300
+            try {
+              const redisPayload = await redis.get(queueData.orderId);
+              if (redisPayload) {
+                const orderCache = JSON.parse(redisPayload);
+                orderCache.status = "Processed";
+                await redis.set(
+                  queueData.orderId,
+                  JSON.stringify(orderCache),
+                  "EX",
+                  300
+                );
+                logger.info(
+                  `Order ${queueData.orderId} processed and updated in Redis.`
+                );
+              }
+            } catch (redisError) {
+              logger.error("Redis operation failed:", redisError);
+            }
+
+            const productIds = payload.items.items.map((x) => x.productId);
+
+            const products = await prisma.product.findMany({
+              where: { id: { in: productIds } },
+              select: { id: true, name: true },
+            });
+
+            const productDetails = payload.items.items.map((item) => {
+              const product = products.find((p) => p.id === item.productId);
+              return {
+                name: product?.name || "Unknown Product",
+                quantity: item.quantity,
+              };
+            });
+
+            await sendEmail(
+              order.userId,
+              order.orderId,
+              "Processed",
+              productDetails
             );
-
-            logger.info(`Order ${queueData.orderId} processed and updated.`);
 
             await sqsClient.send(
               new DeleteMessageCommand({
                 QueueUrl: queueUrl,
-                ReceiptHandle: message.ReceiptHandle,
+                ReceiptHandle: ReceiptHandle,
               })
             );
+
+            logger.info(
+              `Successfully processed and deleted message ${MessageId}`
+            );
+          } catch (messageError) {
+            logger.error("Error processing message:", messageError);
+
+            try {
+              if (Body) {
+                const errorData = JSON.parse(Body);
+                try {
+                  const redisPayload = await redis.get(errorData.orderId);
+                  if (redisPayload) {
+                    const orderCache = JSON.parse(redisPayload);
+                    orderCache.status = "Failed";
+                    await redis.set(
+                      errorData.orderId,
+                      JSON.stringify(orderCache),
+                      "EX",
+                      300
+                    );
+                  }
+                } catch (redisError) {
+                  logger.error(
+                    "Failed to update Redis for failed order:",
+                    redisError
+                  );
+                }
+              }
+            } catch (fallbackError) {
+              logger.error("Error in fallback error handling:", fallbackError);
+            }
+
+            try {
+              await sqsClient.send(
+                new DeleteMessageCommand({
+                  QueueUrl: queueUrl,
+                  ReceiptHandle: ReceiptHandle,
+                })
+              );
+              logger.info(`Deleted problematic message ${MessageId}`);
+            } catch (deleteError) {
+              logger.error(
+                "Failed to delete problematic message:",
+                deleteError
+              );
+            }
           }
         }
+      } catch (loopError) {
+        logger.error("Error in message processing loop:", loopError);
       }
     }
-  } catch (error) {
-    logger.error("Error receiving or processing SQS message:", error);
-    if (error instanceof Error)
-      throw new Error("Failed to pop messages from SQS: " + error.message);
+  } catch (fatalError) {
+    logger.error("Fatal error in queue processor:", fatalError);
+    throw new Error(
+      "Queue processor failed: " +
+        (fatalError instanceof Error ? fatalError.message : String(fatalError))
+    );
   }
 };

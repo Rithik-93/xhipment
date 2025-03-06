@@ -108,6 +108,9 @@ importers:
       '@aws-sdk/client-sqs':
         specifier: ^3.758.0
         version: 3.758.0
+      '@repo/database':
+        specifier: workspace:*
+        version: link:../../packages/database
       aws-sdk:
         specifier: ^2.1692.0
         version: 2.1692.0

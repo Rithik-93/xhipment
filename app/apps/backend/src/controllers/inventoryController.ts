@@ -45,14 +45,33 @@ export const createOrder = async (req: Request, res: Response) => {
     });
 
     if (!allProductsAvailable) {
-      res.json({
-        message: `Some products are out of stock in ${location}`
-      }).status(400);
-      return
+      res
+        .json({
+          message: `Some products are out of stock in ${location}`,
+        })
+        .status(400);
+      return;
     }
 
     console.log(
       `All products are available in ${location} with sufficient stock!`
+    );
+
+    const products = await prisma.product.findMany({
+      where: {
+        id: {
+          in: inventories.map((product) => product.productId),
+        },
+      },
+      select: {
+        name: true,
+        price: true
+      }
+    });
+
+    const totalAmount = products.reduce(
+      (sum, product) => sum + product.price,
+      0
     );
 
     const redisPayload = {
@@ -62,8 +81,20 @@ export const createOrder = async (req: Request, res: Response) => {
 
     const orderUniqueId = generateRandomString(12);
 
-    await redisClient.set(orderUniqueId, JSON.stringify(redisPayload), "EX", 600);
-    await pushToQueue(orderUniqueId, validationResult.data);
+    await redisClient.set(
+      orderUniqueId,
+      JSON.stringify(redisPayload),
+      "EX",
+      600
+    );
+
+    await pushToQueue(
+      req.userId!,
+      orderUniqueId,
+      validationResult.data,
+      totalAmount
+    );
+
     const payload = await redisClient.get(orderUniqueId);
     console.log(payload);
 
