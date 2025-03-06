@@ -1,0 +1,42 @@
+FROM node:20-alpine AS base
+
+FROM base AS builder
+WORKDIR /app
+
+RUN apk add --no-cache openssl
+
+RUN npm i -g pnpm
+
+COPY package.json pnpm-lock.yaml ./
+COPY packages/database/package.json ./packages/database/
+COPY apps/backend/package.json ./apps/backend/
+
+RUN pnpm install
+
+COPY . .
+
+RUN cd packages/database && pnpm install && npx prisma generate && cd ../..
+
+RUN cd apps/backend && pnpm install && pnpm build && cd ../..
+
+FROM base AS production
+WORKDIR /app
+
+RUN apk add --no-cache openssl
+
+RUN npm i -g pnpm
+
+COPY package.json pnpm-lock.yaml ./
+COPY packages/database/package.json ./packages/database/
+COPY apps/backend/package.json ./apps/backend/
+
+RUN pnpm install --prod
+
+COPY --from=builder /app/packages/database/node_modules/ ./packages/database/node_modules/
+COPY --from=builder /app/apps/backend/dist ./apps/backend/dist
+
+ENV DATABASE_URL=""
+
+EXPOSE 3000
+
+CMD ["pnpm", "start:backend"]
