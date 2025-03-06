@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+      args:
+        DATABASE_URL: ${DATABASE_URL}
+        REDIS_URI: redis://redis:6379
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URI=redis://redis:6379
+    volumes:
+      - ./env-config:/usr/src/app/env-config
+    ports:
+      - "3000:3000"
+    depends_on:
+      - redis
+    restart: unless-stopped
+    # Create .env file before starting the app
+    command: >
+      sh -c "echo 'REDIS_URI=redis://redis:6379' > ./apps/backend/.env &&
+             echo 'DATABASE_URL=${DATABASE_URL}' >> ./apps/backend/.env &&
+             pnpm start:backend"
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+      args:
+        DATABASE_URL: ${DATABASE_URL}
+        REDIS_URI: redis://redis:6379
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URI=redis://redis:6379
+    ports:
+      - "3001:3001"
+    depends_on:
+      - redis
+    restart: unless-stopped
+    # Create .env file before starting the app
+    command: >
+      sh -c "echo 'REDIS_URI=redis://redis:6379' > ./apps/worker/.env &&
+             echo 'DATABASE_URL=${DATABASE_URL}' >> ./apps/worker/.env &&
+             pnpm start:worker"
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+
+volumes:
+  redis-data:
