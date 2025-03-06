@@ -23,11 +23,11 @@ The application is built with a microservice architecture consisting of:
 
 ## 🛠️ Tech Stack
 
-* **Node.js & Express** : Core backend framework
+* **Node.js & Express** : Core backend framework and rate limiting
 * **Prisma ORM** : Database access and management
 * **TypeScript** : Type-safe development
 * **AWS SDK** : Cloud service integration (SQS, SES)
-* **Redis (ioredis)** : Caching and rate limiting
+* **Redis (ioredis)** : Caching
 * **Docker & Docker Compose** : Containerization
 * **JWT** : Authentication
 * **Zod** : Runtime validation
