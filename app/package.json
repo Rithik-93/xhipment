@@ -2,7 +2,7 @@
   "name": "app",
   "private": true,
   "scripts": {
-    "build": "turbo run build",
+    "app:setup": "cd apps/backend && pnpm install && pnpm build && cd ../worker && pnpm install && pnpm build && cd ../..",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
