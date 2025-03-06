@@ -12,8 +12,9 @@
     "start:backend": "cd apps/backend && pnpm start",
     "start:worker": "cd apps/worker && pnpm start",
     "db:migrate": "cd packages/database && pnpm dlx db push && cd ../..",
-    "db:generate": "cd packages/database && npx prisma generate cd ../..",
-    "db:seed": "cd packages/database && pnpm seed && cd ../.."
+    "db:generate": "cd packages/database && pnpm install && npx prisma generate cd ../..",
+    "db:seed": "cd packages/database && pnpm seed && cd ../..",
+    "db:setup": "pnpm db:migrate && pnpm db:generate && pnpm db:seed"
   },
   "devDependencies": {
     "prettier": "^3.5.3",
