@@ -89,13 +89,52 @@ pnpm start:worker
 
 ### Key Endpoints
 
-* **Authentication**
-  * POST /api/v1/auth/register
-  * POST /api/v1/auth/login
-  * POST /api/v1/auth/refresh-token
-* **Orders**
-  * POST /api/v1/orders
-  * GET /api/orders/:id
+### API Schemas
+
+##### Register (POST /api/v1/auth/register)
+
+```json
+{
+    "email": "example@gmail.com",
+    "password": "secret"
+}
+```
+
+##### Login (POST /api/v1/auth/login)
+
+```json
+{
+    "email": "example@gmail.com",
+    "password": "secret"
+}
+```
+
+#### Orders
+
+##### Create Order (POST /api/v1/orders)
+
+```json
+{
+    "location": "bangalore",
+    "totalAmount": 4324,
+    "items": [
+        {
+            "productId": "67c8830b7ef1b848ac52ebec",
+            "quantity": 1
+        },
+        {
+            "productId": "67c8830b7ef1b848ac52ebee",
+            "quantity": 2
+        } 
+    ]
+}
+```
+
+##### Get Order Status (GET /api/v1/orders/:orderId)
+
+```json
+/api/v1/orders/:orderId
+```
 
 ## 🚀 Deployment
 
