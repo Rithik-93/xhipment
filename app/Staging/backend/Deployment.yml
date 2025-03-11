@@ -22,7 +22,7 @@ spec:
           env:
             - name: MONGODB_SERVER
               valueFrom:
-                secretKeyRef:
+                configMapKeyRef:
                   name: mongodb-configmap
                   key: db_host
           resources:
