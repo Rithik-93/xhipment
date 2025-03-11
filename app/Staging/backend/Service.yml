@@ -8,5 +8,5 @@ spec:
     app: xhip-backend
   ports:
     - protocol: TCP
-      port: 80 # service to external traffic
+      port: 8081 # service to external traffic
       targetPort: 3000 
