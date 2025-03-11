@@ -19,6 +19,12 @@ spec:
           image: rithik933/xhip-backend:v1
           ports:
             - containerPort: 3000
+          env:
+            - name: MONGODB_SERVER
+              valueFrom:
+                secretKeyRef:
+                  name: mongodb-configmap
+                  key: db_host
           resources:
             requests:
               cpu: "100m"
