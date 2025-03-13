@@ -9,13 +9,9 @@ const app: Express = express();
 const PORT = process.env.PORT || 3001;
 
 const listenQueues = async () => {
-  try {
     while (true) {
       await popQueue();
     }
-  } catch (error) {
-    logger.error("Error in queue listening loop:", error);
-  }
 };
 
 app.listen(PORT, () => {
