@@ -25,11 +25,4 @@ spec:
                 configMapKeyRef:
                   name: mongodb-configmap
                   key: db_host
-          resources:
-            requests:
-              cpu: "100m"
-              memory: "128Mi"
-            limits:
-              cpu: "500m"
-              memory: "512Mi"
       restartPolicy: Always
